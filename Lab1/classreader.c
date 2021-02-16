@@ -1,6 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
-#include <mem.h>
+#include <string.h>
 
 #include "classreader.h"
 
@@ -65,8 +65,11 @@ void entryToString(struct classfile c, int i, char *buf) {
                 } else {
                     buf[k] = ((struct CONSTANT_Utf8_info *) c.constant_pool[i].info)->bytes[j];
                 }
+                if (buf[k] == 0) {
+                    buf[k++] = '\\';
+                    buf[k] = '0';
+                }
                 k++;
-               // sprintf(buf++, "%c", ((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j]);
             }
             buf[k] = 0;
             break;
