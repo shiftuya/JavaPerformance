@@ -56,18 +56,13 @@ void entryToString(struct classfile c, int i, char *buf) {
     switch(c.constant_pool[i].tag) {
         case CONSTANT_Utf8:
             for (int j = 0; j < ((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->length; ++j) {
-                if (((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j] >> 5 == 0b110) {
-                    buf[k] = ((((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j] & 0x1f) << 6) + (((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j+1] & 0x3f);
-                    ++j;
-                } else if (((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j] >> 4 == 0b1110) {
-                    buf[k] = ((((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j] & 0xf) << 12) + ((((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j+1] & 0x3f) << 6) + (((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j+2] & 0x3f);
-                    j += 2;
-                } else {
-                    buf[k] = ((struct CONSTANT_Utf8_info *) c.constant_pool[i].info)->bytes[j];
-                }
-                if (buf[k] == 0) {
+                if (((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j] == 0b11000000
+                    && ((struct CONSTANT_Utf8_info*)c.constant_pool[i].info)->bytes[j+1] == 0b10000000){
                     buf[k++] = '\\';
                     buf[k] = '0';
+                    ++j;
+                } else {
+                    buf[k] = ((struct CONSTANT_Utf8_info *) c.constant_pool[i].info)->bytes[j];
                 }
                 k++;
             }
@@ -111,7 +106,11 @@ void entryToString(struct classfile c, int i, char *buf) {
             strcat(buf, newbuf);
             break;
         case CONSTANT_String:
-            sprintf(buf, "#%d", ((struct CONSTANT_String_info*)c.constant_pool[i].info)->string_index);
+            sprintf(newbuf, "#%d", ((struct CONSTANT_String_info*)c.constant_pool[i].info)->string_index);
+            sprintf(buf, "%-20s", newbuf);
+            entryToString(c, ((struct CONSTANT_String_info*)c.constant_pool[i].info)->string_index - 1, newbuf);
+            strcat(buf, "// ");
+            strcat(buf, newbuf);
             break;
         case CONSTANT_Fieldref:
             sprintf(newbuf, "#%d.#%d", ((struct CONSTANT_Fieldref_info*)c.constant_pool[i].info)->class_index, ((struct CONSTANT_Fieldref_info*)c.constant_pool[i].info)->name_and_type_index);
