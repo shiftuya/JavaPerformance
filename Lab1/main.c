@@ -23,8 +23,7 @@ int main(int argc, char **argv) {
 
     fclose(file);
 
-    printf("Minor version: %d\n", c.minor_version);
-    printf("Major version: %d\n", c.major_version);
+	printf("Class file format version: %d.%d\n\n", c.major_version, c.minor_version);
 
     char buffer[1000];
 

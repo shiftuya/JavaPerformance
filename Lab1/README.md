@@ -4,4 +4,4 @@ Prints the constant pool of a Java class file. Currently prints all values excep
 
 Compile: `make`
 
-Run: `./constpool YourClass.class`
+Run: `./dump_constant_pool YourClass.class`
