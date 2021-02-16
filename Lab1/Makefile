@@ -1,7 +1,7 @@
 .PHONY: clean
 
-main: main.o classreader.o
-	gcc -o main main.o classreader.o
+constpool: main.o classreader.o
+	gcc -o constpool main.o classreader.o
 
 main.o: main.c
 	gcc -c -o main.o main.c

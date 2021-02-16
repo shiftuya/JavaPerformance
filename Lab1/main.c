@@ -21,8 +21,10 @@ int main(int argc, char **argv) {
 
     struct classfile c = readClass(file);
 
-    printf("Minor: %d\n", c.minor_version);
-    printf("Major: %d\n", c.major_version);
+    fclose(file);
+
+    printf("Minor version: %d\n", c.minor_version);
+    printf("Major version: %d\n", c.major_version);
 
     char buffer[1000];
 
@@ -42,8 +44,6 @@ int main(int argc, char **argv) {
     }
 
     dispose(c);
-
-    fclose(file);
 
     return 0;
 }
