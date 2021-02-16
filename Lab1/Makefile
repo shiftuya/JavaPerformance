@@ -10,4 +10,4 @@ classreader.o: classreader.c
 	gcc -c -o classreader.o classreader.c
 
 clean:
-	rm -rf main *.o
+	rm -rf dump_constant_pool *.o
