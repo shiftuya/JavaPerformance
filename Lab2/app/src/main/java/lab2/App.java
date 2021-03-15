@@ -38,7 +38,7 @@ public class App {
     System.out.println("Output: " + Paths.get(className).toAbsolutePath());
   }
 
-  public static byte[] dump() throws Exception {
+  public static byte[] dump() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
