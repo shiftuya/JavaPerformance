@@ -8,3 +8,5 @@ build
 
 app/src/main/gen
 app/src/main/java/ru/nsu/fit/lab4/generated
+*.jar
+*.class

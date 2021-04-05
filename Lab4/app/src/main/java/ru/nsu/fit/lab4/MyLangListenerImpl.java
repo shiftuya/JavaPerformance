@@ -4,9 +4,6 @@ import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SUPER;
 import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ASTORE;
-import static org.objectweb.asm.Opcodes.BIPUSH;
-import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.IADD;
@@ -16,7 +13,6 @@ import static org.objectweb.asm.Opcodes.ICONST_1;
 import static org.objectweb.asm.Opcodes.IDIV;
 import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.IFNE;
-import static org.objectweb.asm.Opcodes.IF_ACMPNE;
 import static org.objectweb.asm.Opcodes.IF_ICMPEQ;
 import static org.objectweb.asm.Opcodes.IF_ICMPGE;
 import static org.objectweb.asm.Opcodes.IF_ICMPGT;
@@ -31,15 +27,11 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.IOR;
 import static org.objectweb.asm.Opcodes.ISTORE;
 import static org.objectweb.asm.Opcodes.ISUB;
-import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.RETURN;
 import static org.objectweb.asm.Opcodes.V15;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -47,7 +39,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -83,9 +74,7 @@ import ru.nsu.fit.lab4.generated.MyLangParser.StringAssignmentContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringConcatContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringDeclarationContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringLiteralContext;
-//import ru.nsu.fit.lab4.generated.MyLangParser.StringVarReferenceContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.VarReferenceContext;
-import ru.nsu.fit.lab4.generated.MyLangParserBaseListener;
 import ru.nsu.fit.lab4.generated.MyLangParserListener;
 
 public class MyLangListenerImpl implements MyLangParserListener {
@@ -106,23 +95,23 @@ public class MyLangListenerImpl implements MyLangParserListener {
     }
   }
 
-  private ClassWriter classWriter;
+  private final ClassWriter classWriter;
   private MethodVisitor methodVisitor;
-  private Stack<Label> currentLabels = new Stack<>();
+  private final Stack<Label> currentLabels = new Stack<>();
 
-  private Map<Integer, Label> declaredLabels = new HashMap<>();
+  private final Map<Integer, Label> declaredLabels = new HashMap<>();
 
-  private Map<CodeContext, Set<String>> localVariableMap = new HashMap<>();
-  private Stack<CodeContext> codeBlockStack = new Stack<>();
-  private Map<String, Integer> localVariableNameMap = new HashMap<>();
-  private MyStack<Object> stackTypes = new MyStack<>();
-  private Map<Integer, Object> varTypes = new HashMap<>();
+  private final Map<CodeContext, Set<String>> localVariableMap = new HashMap<>();
+  private final Stack<CodeContext> codeBlockStack = new Stack<>();
+  private final Map<String, Integer> localVariableNameMap = new HashMap<>();
+  private final MyStack<Object> stackTypes = new MyStack<>();
+  private final Map<Integer, Object> varTypes = new HashMap<>();
 
 
-  public MyLangListenerImpl() {
+  public MyLangListenerImpl(String className) {
     classWriter = new ClassWriter(0);
-    classWriter.visit(V15, ACC_PUBLIC | ACC_SUPER, "Main", null, "java/lang/Object", null);
-    classWriter.visitSource("Main.java", null);
+    classWriter.visit(V15, ACC_PUBLIC | ACC_SUPER, className, null, "java/lang/Object", null);
+    classWriter.visitSource(className + ".java", null);
 
     {
       methodVisitor = classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
@@ -159,7 +148,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
     localVariableMap.remove(ctx);
     if (codeBlockStack.empty()) {
       methodVisitor.visitInsn(RETURN);
-      methodVisitor.visitMaxs(stackTypes.getMaxSize(), /*varTypes.size()*/100);
+      methodVisitor.visitMaxs(stackTypes.getMaxSize(),100);
       methodVisitor.visitEnd();
       classWriter.visitEnd();
     }
@@ -189,7 +178,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
     Label falseLabel = currentLabels.pop();
     methodVisitor.visitLabel(falseLabel);
     methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
-    //visitFrame();
   }
 
   @Override
@@ -205,7 +193,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
     methodVisitor.visitLabel(label);
 
     visitFrame();
-    //methodVisitor.visitFrame(Opcodes.F_APPEND, 0, null, 0, null);
   }
 
   @Override
@@ -258,7 +245,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitIntAssignment(IntAssignmentContext ctx) {
-    boolean isDeclared = false;
     int number;
     if (localVariableNameMap.containsKey(ctx.getChild(0).getText())) {
       number = localVariableNameMap.get(ctx.getChild(0).getText());
@@ -348,9 +334,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterBinaryArithmetic(BinaryArithmeticContext ctx) {
-    for (var ch : ctx.children) {
-      System.out.println(ch.getClass());
-    }
+
   }
 
   @Override
@@ -413,7 +397,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterStringLiteral(StringLiteralContext ctx) {
-    System.out.println("enter string literal");
     methodVisitor.visitLdcInsn(
         ctx.STRINGLIT().toString().substring(1, ctx.STRINGLIT().toString().length() - 1));
     stackTypes.push("java/lang/String");
@@ -421,20 +404,13 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitStringLiteral(StringLiteralContext ctx) {
-    System.out.println("exit string literal");
   }
 
   @Override
   public void enterStringConcat(StringConcatContext ctx) {
-    System.out.println("enter string concat");
-    System.out.println(ctx.getChildCount());
-    for (var ch : ctx.children) {
-      System.out.println(ch.getClass());
-    }
     methodVisitor.visitLdcInsn(
         ctx.getChild(0).getText().substring(1, ctx.getChild(0).getText().length() - 1));
     stackTypes.push("java/lang/String");
-    System.out.println(ctx.getChild(0).getText());
   }
 
   @Override
@@ -445,18 +421,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
     // stack contains 1 string
     stackTypes.pop();
 
-    System.out.println("exit string concat");
   }
-
-/*  @Override
-  public void enterStringVarReference(StringVarReferenceContext ctx) {
-
-  }
-
-  @Override
-  public void exitStringVarReference(StringVarReferenceContext ctx) {
-
-  }*/
 
   @Override
   public void enterComparison(ComparisonContext ctx) {

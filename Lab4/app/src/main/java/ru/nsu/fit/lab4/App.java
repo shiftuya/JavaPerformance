@@ -3,40 +3,42 @@
  */
 package ru.nsu.fit.lab4;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import org.antlr.v4.runtime.ANTLRFileStream;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.apache.commons.io.FilenameUtils;
 import ru.nsu.fit.lab4.generated.MyLangLexer;
 import ru.nsu.fit.lab4.generated.MyLangParser;
-import ru.nsu.fit.lab4.generated.SandyLexer;
-import ru.nsu.fit.lab4.generated.SandyParser;
-import ru.nsu.fit.lab4.generated.SandyParser.SandyFileContext;
 
 public class App {
-    public static void main(String[] args) throws IOException {
-/*
-        SandyLexer sandyLexer = new SandyLexer(CharStreams.fromString("var a = 1 + 2"));
-        SandyParser sandyParser = new SandyParser(new CommonTokenStream(sandyLexer));
-        SandyFileContext sandyFileContext = sandyParser.sandyFile();
-        System.out.println(sandyFileContext.children.get(0).getClass());*/
-       // System.out.println(App.class.getResourceAsStream("/heh.heh").readAllBytes());
-        MyLangLexer myLangLexer = new MyLangLexer(CharStreams.fromStream(App.class.getResourceAsStream("/printString.heh")));
-        MyLangParser myLangParser = new MyLangParser(new CommonTokenStream(myLangLexer));
-        var tree = myLangParser.code();
 
-        //new TreeParser().dump(tree);
-
-        ParseTreeWalker walker = new ParseTreeWalker();
-        MyLangListenerImpl listener = new MyLangListenerImpl();
-        walker.walk(listener, tree);
-
-        byte[] dump = listener.getBytes();
-
-        Files.write(Paths.get("Main.class"), dump);
+  public static void main(String[] args) throws IOException {
+    String filename;
+    if (args.length >= 1) {
+      filename = args[0];
+    } else {
+      System.out.println("File not provided");
+      return;
     }
+
+    String className = FilenameUtils.getBaseName(filename);
+
+    MyLangLexer myLangLexer = new MyLangLexer(
+    CharStreams.fromStream(new FileInputStream(filename)));
+    MyLangParser myLangParser = new MyLangParser(new CommonTokenStream(myLangLexer));
+    var tree = myLangParser.code();
+
+    ParseTreeWalker walker = new ParseTreeWalker();
+    MyLangListenerImpl listener = new MyLangListenerImpl(className);
+    walker.walk(listener, tree);
+
+    byte[] dump = listener.getBytes();
+
+    Files.write(Paths.get(className + ".class"), dump);
+    System.out.println(Paths.get(className + ".class").toAbsolutePath());
+  }
 }
