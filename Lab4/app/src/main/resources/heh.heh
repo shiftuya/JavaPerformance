@@ -1,0 +1,8 @@
+
+int a = 100
+int b = 1000
+
+if (a == b) {
+int c = 200
+print c
+}
