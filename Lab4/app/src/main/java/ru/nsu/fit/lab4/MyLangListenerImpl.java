@@ -3,8 +3,21 @@ package ru.nsu.fit.lab4;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SUPER;
+import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.ASTORE;
+import static org.objectweb.asm.Opcodes.BIPUSH;
+import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
+import static org.objectweb.asm.Opcodes.GOTO;
+import static org.objectweb.asm.Opcodes.IFEQ;
+import static org.objectweb.asm.Opcodes.IF_ICMPGE;
+import static org.objectweb.asm.Opcodes.IF_ICMPLE;
+import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.ISTORE;
+import static org.objectweb.asm.Opcodes.NEW;
+import static org.objectweb.asm.Opcodes.RETURN;
 import static org.objectweb.asm.Opcodes.V15;
 
 import java.util.HashMap;
@@ -18,8 +31,10 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import ru.nsu.fit.lab4.generated.MyLangParser.AssignmentStatementContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.BinaryArighmeticContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.BinaryArithmeticSignContext;
@@ -68,8 +83,23 @@ public class MyLangListenerImpl implements MyLangParserListener {
     classWriter.visit(V15, ACC_PUBLIC | ACC_SUPER, "Main", null, "java/lang/Object", null);
     classWriter.visitSource("Main.java", null);
 
+    {
+      methodVisitor = classWriter.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+      methodVisitor.visitCode();
+      Label label0 = new Label();
+      methodVisitor.visitLabel(label0);
+      methodVisitor.visitLineNumber(4, label0);
+      methodVisitor.visitVarInsn(ALOAD, 0);
+      methodVisitor.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+      methodVisitor.visitInsn(RETURN);
+      methodVisitor.visitMaxs(1, 1);
+      methodVisitor.visitEnd();
+    }
+
+
     methodVisitor = classWriter
         .visitMethod(ACC_PUBLIC | ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null);
+    methodVisitor.visitCode();
   }
 
   public byte[] getBytes() {
@@ -89,6 +119,12 @@ public class MyLangListenerImpl implements MyLangParserListener {
   public void exitCode(CodeContext ctx) {
     codeBlockStack.pop();
     localVariableMap.remove(ctx);
+    if (codeBlockStack.empty()) {
+      methodVisitor.visitInsn(RETURN);
+      methodVisitor.visitMaxs(300, 400); // todo think
+      methodVisitor.visitEnd();
+      classWriter.visitEnd();
+    }
   }
 
   @Override
@@ -275,24 +311,36 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterStringLiteral(StringLiteralContext ctx) {
-
-    //System.out.println(ctx.STRINGLIT().toString().substring(1, ctx.STRINGLIT().toString().length() - 1));
-    methodVisitor.visitLdcInsn(ctx.STRINGLIT().toString().substring(1, ctx.STRINGLIT().toString().length() - 1));
+    System.out.println("enter string literal");
+    methodVisitor.visitLdcInsn(
+        ctx.STRINGLIT().toString().substring(1, ctx.STRINGLIT().toString().length() - 1));
   }
 
   @Override
   public void exitStringLiteral(StringLiteralContext ctx) {
-
+    System.out.println("exit string literal");
   }
 
   @Override
   public void enterStringConcat(StringConcatContext ctx) {
-
+    System.out.println("enter string concat");
+    System.out.println(ctx.getChildCount());
+    for(var ch : ctx.children) {
+      System.out.println(ch.getClass());
+    }
+    methodVisitor.visitLdcInsn(
+        ctx.getChild(0).getText().substring(1, ctx.getChild(0).getText().length() - 1));
+    System.out.println(ctx.getChild(0).getText());
   }
 
   @Override
   public void exitStringConcat(StringConcatContext ctx) {
+    // stack contains 2 strings
+    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "concat",
+        "(Ljava/lang/String;)Ljava/lang/String;", false);
+    // stack contains 1 string
 
+    System.out.println("exit string concat");
   }
 
   @Override
@@ -417,7 +465,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void visitTerminal(TerminalNode node) {
-
   }
 
   @Override
