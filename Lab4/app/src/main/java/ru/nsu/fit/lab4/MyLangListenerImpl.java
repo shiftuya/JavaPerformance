@@ -10,21 +10,25 @@ import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.IADD;
+import static org.objectweb.asm.Opcodes.IAND;
 import static org.objectweb.asm.Opcodes.ICONST_0;
 import static org.objectweb.asm.Opcodes.ICONST_1;
 import static org.objectweb.asm.Opcodes.IDIV;
 import static org.objectweb.asm.Opcodes.IFEQ;
+import static org.objectweb.asm.Opcodes.IFNE;
 import static org.objectweb.asm.Opcodes.IF_ACMPNE;
 import static org.objectweb.asm.Opcodes.IF_ICMPEQ;
 import static org.objectweb.asm.Opcodes.IF_ICMPGE;
 import static org.objectweb.asm.Opcodes.IF_ICMPGT;
 import static org.objectweb.asm.Opcodes.IF_ICMPLE;
 import static org.objectweb.asm.Opcodes.IF_ICMPLT;
+import static org.objectweb.asm.Opcodes.IF_ICMPNE;
 import static org.objectweb.asm.Opcodes.ILOAD;
 import static org.objectweb.asm.Opcodes.IMUL;
 import static org.objectweb.asm.Opcodes.INTEGER;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.IOR;
 import static org.objectweb.asm.Opcodes.ISTORE;
 import static org.objectweb.asm.Opcodes.ISUB;
 import static org.objectweb.asm.Opcodes.NEW;
@@ -86,15 +90,32 @@ import ru.nsu.fit.lab4.generated.MyLangParserListener;
 
 public class MyLangListenerImpl implements MyLangParserListener {
 
+  private static class MyStack<T> extends Stack<T> {
+    private int maxSize = 0;
+    @Override
+    public T push(T item) {
+      T res = super.push(item);
+      if (size() > maxSize) {
+        maxSize = size();
+      }
+      return res;
+    }
+
+    public int getMaxSize() {
+      return maxSize;
+    }
+  }
+
   private ClassWriter classWriter;
   private MethodVisitor methodVisitor;
+  private Stack<Label> currentLabels = new Stack<>();
 
   private Map<Integer, Label> declaredLabels = new HashMap<>();
 
   private Map<CodeContext, Set<String>> localVariableMap = new HashMap<>();
   private Stack<CodeContext> codeBlockStack = new Stack<>();
   private Map<String, Integer> localVariableNameMap = new HashMap<>();
-  private Stack<Object> stackTypes = new Stack<>();
+  private MyStack<Object> stackTypes = new MyStack<>();
   private Map<Integer, Object> varTypes = new HashMap<>();
 
 
@@ -138,7 +159,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
     localVariableMap.remove(ctx);
     if (codeBlockStack.empty()) {
       methodVisitor.visitInsn(RETURN);
-      methodVisitor.visitMaxs(300, 400); // todo think
+      methodVisitor.visitMaxs(stackTypes.getMaxSize(), /*varTypes.size()*/100);
       methodVisitor.visitEnd();
       classWriter.visitEnd();
     }
@@ -146,6 +167,11 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterCodeBlock(CodeBlockContext ctx) {
+    Label falseLabel = new Label();
+    methodVisitor.visitJumpInsn(IFEQ, falseLabel);
+    stackTypes.pop();
+
+    currentLabels.push(falseLabel);
   }
 
   @Override
@@ -160,7 +186,10 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitIfclause(IfclauseContext ctx) {
-
+    Label falseLabel = currentLabels.pop();
+    methodVisitor.visitLabel(falseLabel);
+    methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
+    //visitFrame();
   }
 
   @Override
@@ -415,7 +444,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
   }
 
   @Override
-  public void exitComparison(ComparisonContext ctx) { // TODO complete stack frames
+  public void exitComparison(ComparisonContext ctx) {
     Label trueLabel = new Label();
     Label falseLabel = new Label();
     methodVisitor.visitJumpInsn(
@@ -423,11 +452,11 @@ public class MyLangListenerImpl implements MyLangParserListener {
           case ">" -> IF_ICMPGT;
           case "<" -> IF_ICMPLT;
           case "==" -> IF_ICMPEQ;
-          case "!=" -> IF_ACMPNE;
+          case "!=" -> IF_ICMPNE;
           case ">=" -> IF_ICMPGE;
           case "<=" -> IF_ICMPLE;
           default -> throw new IllegalStateException(
-              "Unexpected value: " + ctx.children.get(2).getText());
+              "Unexpected value: " + ctx.children.get(1).getText());
         }, trueLabel);
     stackTypes.pop();
     stackTypes.pop();
@@ -436,16 +465,14 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
     methodVisitor.visitJumpInsn(GOTO, falseLabel);
     methodVisitor.visitLabel(trueLabel);
-    System.out.println(varTypes.size());
-    Object[] objects = new Object[varTypes.size()];
-    for (int i = 0; i < varTypes.size(); ++i) {
-      objects[i] = varTypes.get(i);
-    }
-    methodVisitor.visitFrame(Opcodes.F_FULL, varTypes.size(), objects/* new Object[] {Opcodes.INTEGER, Opcodes.INTEGER}*/, stackTypes.size(), stackTypes.toArray() /*new Object[] {"java/io/PrintStream", Opcodes.INTEGER, Opcodes.INTEGER}*/);
+
+    visitFrame();
+
     methodVisitor.visitInsn(ICONST_1);
     methodVisitor.visitLabel(falseLabel);
     stackTypes.push(INTEGER);
-    methodVisitor.visitFrame(Opcodes.F_FULL, varTypes.size(), objects, stackTypes.size(), stackTypes.toArray());
+
+    visitFrame();
   }
 
   @Override
@@ -455,7 +482,33 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitBinaryLogic(BinaryLogicContext ctx) {
+    Label trueLabel = new Label();
+    Label falseLabel = new Label();
+    methodVisitor.visitInsn(
+        switch (ctx.children.get(2).getText()) {
+          case "&&" -> IAND;
+          case "||" -> IOR;
+          default -> throw new IllegalStateException(
+              "Unexpected value: " + ctx.children.get(2).getText());
+        });
+    stackTypes.pop();
 
+    methodVisitor.visitJumpInsn(IFNE, trueLabel);
+    stackTypes.pop();
+
+
+    methodVisitor.visitInsn(ICONST_0);
+
+    methodVisitor.visitJumpInsn(GOTO, falseLabel);
+    methodVisitor.visitLabel(trueLabel);
+
+    visitFrame();
+
+    methodVisitor.visitInsn(ICONST_1);
+    methodVisitor.visitLabel(falseLabel);
+    stackTypes.push(INTEGER);
+
+    visitFrame();
   }
 
   @Override
@@ -465,7 +518,24 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitNegation(NegationContext ctx) {
+    Label trueLabel = new Label();
+    Label falseLabel = new Label();
+    methodVisitor.visitJumpInsn(IFEQ, trueLabel);
+    stackTypes.pop();
 
+
+    methodVisitor.visitInsn(ICONST_0);
+
+    methodVisitor.visitJumpInsn(GOTO, falseLabel);
+    methodVisitor.visitLabel(trueLabel);
+
+    visitFrame();
+
+    methodVisitor.visitInsn(ICONST_1);
+    methodVisitor.visitLabel(falseLabel);
+    stackTypes.push(INTEGER);
+
+    visitFrame();
   }
 
   @Override
@@ -574,6 +644,15 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitEveryRule(ParserRuleContext ctx) {
+
+  }
+
+  private void visitFrame() {
+    Object[] objects = new Object[varTypes.size()];
+    for (int i = 0; i < varTypes.size(); ++i) {
+      objects[i] = varTypes.get(i);
+    }
+    methodVisitor.visitFrame(Opcodes.F_FULL, varTypes.size(), objects, stackTypes.size(), stackTypes.toArray());
 
   }
 }
