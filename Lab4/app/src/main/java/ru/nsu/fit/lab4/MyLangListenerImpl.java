@@ -194,12 +194,22 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterLabelDeclaration(LabelDeclarationContext ctx) {
+    int index = Integer.parseInt(ctx.INTLIT().toString());
+    Label label;
+    if (declaredLabels.containsKey(index)) {
+      label = declaredLabels.get(index);
+    } else {
+      label = new Label();
+      declaredLabels.put(index, label);
+    }
+    methodVisitor.visitLabel(label);
 
+    visitFrame();
+    //methodVisitor.visitFrame(Opcodes.F_APPEND, 0, null, 0, null);
   }
 
   @Override
   public void exitLabelDeclaration(LabelDeclarationContext ctx) {
-
   }
 
   @Override
@@ -318,7 +328,17 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterGotoExpression(GotoExpressionContext ctx) {
+    int index = Integer.parseInt(ctx.INTLIT().toString());
 
+    Label label;
+    if (declaredLabels.containsKey(index)) {
+      label = declaredLabels.get(index);
+    } else {
+      label = new Label();
+      declaredLabels.put(index, label);
+    }
+    methodVisitor.visitJumpInsn(GOTO, label);
+    methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
   }
 
   @Override
@@ -590,7 +610,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterLabelStatement(LabelStatementContext ctx) {
-
+// ignore
   }
 
   @Override
