@@ -1,3 +1,5 @@
 
-print "aaa" + "bbb" + "ccc"
+a = 2
+b = (a * 1000)
+print b > 10000
 

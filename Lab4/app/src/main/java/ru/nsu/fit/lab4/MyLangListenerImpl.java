@@ -9,17 +9,29 @@ import static org.objectweb.asm.Opcodes.BIPUSH;
 import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.GOTO;
+import static org.objectweb.asm.Opcodes.IADD;
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.IDIV;
 import static org.objectweb.asm.Opcodes.IFEQ;
+import static org.objectweb.asm.Opcodes.IF_ACMPNE;
+import static org.objectweb.asm.Opcodes.IF_ICMPEQ;
 import static org.objectweb.asm.Opcodes.IF_ICMPGE;
+import static org.objectweb.asm.Opcodes.IF_ICMPGT;
 import static org.objectweb.asm.Opcodes.IF_ICMPLE;
+import static org.objectweb.asm.Opcodes.IF_ICMPLT;
 import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.IMUL;
+import static org.objectweb.asm.Opcodes.INTEGER;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.ISTORE;
+import static org.objectweb.asm.Opcodes.ISUB;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.RETURN;
 import static org.objectweb.asm.Opcodes.V15;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -36,7 +48,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import ru.nsu.fit.lab4.generated.MyLangParser.AssignmentStatementContext;
-import ru.nsu.fit.lab4.generated.MyLangParser.BinaryArighmeticContext;
+import ru.nsu.fit.lab4.generated.MyLangParser.BinaryArithmeticContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.BinaryArithmeticSignContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.BinaryLogicContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.BinaryLogicSignContext;
@@ -67,6 +79,7 @@ import ru.nsu.fit.lab4.generated.MyLangParser.StringAssignmentContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringConcatContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringDeclarationContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringLiteralContext;
+//import ru.nsu.fit.lab4.generated.MyLangParser.StringVarReferenceContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.VarReferenceContext;
 import ru.nsu.fit.lab4.generated.MyLangParserBaseListener;
 import ru.nsu.fit.lab4.generated.MyLangParserListener;
@@ -77,6 +90,13 @@ public class MyLangListenerImpl implements MyLangParserListener {
   private MethodVisitor methodVisitor;
 
   private Map<Integer, Label> declaredLabels = new HashMap<>();
+
+  private Map<CodeContext, Set<String>> localVariableMap = new HashMap<>();
+  private Stack<CodeContext> codeBlockStack = new Stack<>();
+  private Map<String, Integer> localVariableNameMap = new HashMap<>();
+  private Stack<Object> stackTypes = new Stack<>();
+  private Map<Integer, Object> varTypes = new HashMap<>();
+
 
   public MyLangListenerImpl() {
     classWriter = new ClassWriter(0);
@@ -96,7 +116,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
       methodVisitor.visitEnd();
     }
 
-
     methodVisitor = classWriter
         .visitMethod(ACC_PUBLIC | ACC_STATIC, "main", "([Ljava/lang/String;)V", null, null);
     methodVisitor.visitCode();
@@ -106,8 +125,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
     return classWriter.toByteArray();
   }
 
-  private Map<CodeContext, Set<String>> localVariableMap = new HashMap<>();
-  private Stack<CodeContext> codeBlockStack = new Stack<>();
 
   @Override
   public void enterCode(CodeContext ctx) {
@@ -129,7 +146,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterCodeBlock(CodeBlockContext ctx) {
-
   }
 
   @Override
@@ -179,7 +195,6 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void enterIntDeclaration(IntDeclarationContext ctx) {
-
   }
 
   @Override
@@ -204,7 +219,18 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitIntAssignment(IntAssignmentContext ctx) {
-
+    boolean isDeclared = false;
+    int number;
+    if (localVariableNameMap.containsKey(ctx.getChild(0).getText())) {
+      number = localVariableNameMap.get(ctx.getChild(0).getText());
+    } else {
+      number = localVariableNameMap.keySet().size();
+      localVariableNameMap.put(ctx.getChild(0).getText(), number);
+      localVariableMap.get(codeBlockStack.peek()).add(ctx.getChild(0).getText());
+    }
+    methodVisitor.visitVarInsn(ISTORE, number);
+    stackTypes.pop();
+    varTypes.put(number, Opcodes.INTEGER);
   }
 
   @Override
@@ -220,6 +246,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
   @Override
   public void enterPrintString(PrintStringContext ctx) {
     methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+    stackTypes.push("java/io/PrintStream");
   }
 
   @Override
@@ -227,25 +254,36 @@ public class MyLangListenerImpl implements MyLangParserListener {
     methodVisitor
         .visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V",
             false);
+    stackTypes.pop(); // remove arg
+    stackTypes.pop(); // remove reference
+
   }
 
   @Override
   public void enterPrintArithmetic(PrintArithmeticContext ctx) {
-
+    methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+    stackTypes.push("java/io/PrintStream");
   }
 
   @Override
   public void exitPrintArithmetic(PrintArithmeticContext ctx) {
+    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(I)V", false);
+    stackTypes.pop(); // remove arg
+    stackTypes.pop(); // remove reference
 
   }
 
   @Override
   public void enterPrintLogical(PrintLogicalContext ctx) {
-
+    methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+    stackTypes.push("java/io/PrintStream");
   }
 
   @Override
   public void exitPrintLogical(PrintLogicalContext ctx) {
+    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Z)V", false);
+    stackTypes.pop(); // remove arg
+    stackTypes.pop(); // remove reference
 
   }
 
@@ -260,28 +298,43 @@ public class MyLangListenerImpl implements MyLangParserListener {
   }
 
   @Override
-  public void enterBinaryArighmetic(BinaryArighmeticContext ctx) {
-
+  public void enterBinaryArithmetic(BinaryArithmeticContext ctx) {
+    for (var ch : ctx.children) {
+      System.out.println(ch.getClass());
+    }
   }
 
   @Override
-  public void exitBinaryArighmetic(BinaryArighmeticContext ctx) {
-
+  public void exitBinaryArithmetic(BinaryArithmeticContext ctx) {
+    methodVisitor.visitInsn(switch (ctx.children.get(2).getText()) {
+      case "+" -> IADD;
+      case "-" -> ISUB;
+      case "/" -> IDIV;
+      case "*" -> IMUL;
+      default -> throw new IllegalStateException(
+          "Unexpected value: " + ctx.children.get(2).getText());
+    });
+    stackTypes.pop(); // leave result instead of 2 operands
   }
 
   @Override
   public void enterIntLiteral(IntLiteralContext ctx) {
-
+    methodVisitor.visitLdcInsn(Integer.parseInt(ctx.getText()));
+    stackTypes.push(INTEGER);
   }
 
   @Override
   public void exitIntLiteral(IntLiteralContext ctx) {
-
+// ignore
   }
 
   @Override
   public void enterVarReference(VarReferenceContext ctx) {
-
+    if (!localVariableNameMap.containsKey(ctx.ID().toString())) {
+      throw new IllegalStateException("Local variable not declared: " + ctx.ID().toString());
+    }
+    methodVisitor.visitVarInsn(ILOAD, localVariableNameMap.get(ctx.ID().toString()));
+    stackTypes.push(varTypes.get(localVariableNameMap.get(ctx.ID().toString())));
   }
 
   @Override
@@ -314,6 +367,7 @@ public class MyLangListenerImpl implements MyLangParserListener {
     System.out.println("enter string literal");
     methodVisitor.visitLdcInsn(
         ctx.STRINGLIT().toString().substring(1, ctx.STRINGLIT().toString().length() - 1));
+    stackTypes.push("java/lang/String");
   }
 
   @Override
@@ -325,11 +379,12 @@ public class MyLangListenerImpl implements MyLangParserListener {
   public void enterStringConcat(StringConcatContext ctx) {
     System.out.println("enter string concat");
     System.out.println(ctx.getChildCount());
-    for(var ch : ctx.children) {
+    for (var ch : ctx.children) {
       System.out.println(ch.getClass());
     }
     methodVisitor.visitLdcInsn(
         ctx.getChild(0).getText().substring(1, ctx.getChild(0).getText().length() - 1));
+    stackTypes.push("java/lang/String");
     System.out.println(ctx.getChild(0).getText());
   }
 
@@ -339,18 +394,58 @@ public class MyLangListenerImpl implements MyLangParserListener {
     methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "concat",
         "(Ljava/lang/String;)Ljava/lang/String;", false);
     // stack contains 1 string
+    stackTypes.pop();
 
     System.out.println("exit string concat");
   }
 
-  @Override
-  public void enterComparison(ComparisonContext ctx) {
+/*  @Override
+  public void enterStringVarReference(StringVarReferenceContext ctx) {
 
   }
 
   @Override
-  public void exitComparison(ComparisonContext ctx) {
+  public void exitStringVarReference(StringVarReferenceContext ctx) {
 
+  }*/
+
+  @Override
+  public void enterComparison(ComparisonContext ctx) {
+// ignore
+  }
+
+  @Override
+  public void exitComparison(ComparisonContext ctx) { // TODO complete stack frames
+    Label trueLabel = new Label();
+    Label falseLabel = new Label();
+    methodVisitor.visitJumpInsn(
+        switch (ctx.children.get(1).getText()) {
+          case ">" -> IF_ICMPGT;
+          case "<" -> IF_ICMPLT;
+          case "==" -> IF_ICMPEQ;
+          case "!=" -> IF_ACMPNE;
+          case ">=" -> IF_ICMPGE;
+          case "<=" -> IF_ICMPLE;
+          default -> throw new IllegalStateException(
+              "Unexpected value: " + ctx.children.get(2).getText());
+        }, trueLabel);
+    stackTypes.pop();
+    stackTypes.pop();
+
+    methodVisitor.visitInsn(ICONST_0);
+
+    methodVisitor.visitJumpInsn(GOTO, falseLabel);
+    methodVisitor.visitLabel(trueLabel);
+    System.out.println(varTypes.size());
+    Object[] objects = new Object[varTypes.size()];
+    for (int i = 0; i < varTypes.size(); ++i) {
+      objects[i] = varTypes.get(i);
+    }
+    methodVisitor.visitFrame(Opcodes.F_FULL, varTypes.size(), objects/* new Object[] {Opcodes.INTEGER, Opcodes.INTEGER}*/, stackTypes.size(), stackTypes.toArray() /*new Object[] {"java/io/PrintStream", Opcodes.INTEGER, Opcodes.INTEGER}*/);
+    methodVisitor.visitInsn(ICONST_1);
+    methodVisitor.visitLabel(falseLabel);
+    stackTypes.push(INTEGER);
+    methodVisitor.visitFrame(Opcodes.F_FULL, varTypes.size(), objects, stackTypes.size(), stackTypes.toArray());
   }
 
   @Override

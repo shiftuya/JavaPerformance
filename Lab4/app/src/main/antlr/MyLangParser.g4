@@ -27,7 +27,7 @@ print : PRINT stringExpression                # printString
 gotoExpression : GOTO INTLIT ;
 
 arithmeticExpression :
-LPAREN arithmeticExpression binaryArithmeticSign arithmeticExpression RPAREN # binaryArighmetic
+LPAREN arithmeticExpression binaryArithmeticSign arithmeticExpression RPAREN # binaryArithmetic
 | INTLIT                                                                     # intLiteral
 | ID                                                                         # varReference
 | LPAREN arithmeticExpression RPAREN                                         # parenExpression
@@ -37,7 +37,9 @@ LPAREN arithmeticExpression binaryArithmeticSign arithmeticExpression RPAREN # b
 stringExpression :
 STRINGLIT                         # stringLiteral
 | STRINGLIT PLUS stringExpression # stringConcat
+//| ID                              # stringVarReference
 ;
+
 
 logicalExpression :
 arithmeticExpression comparisonSign arithmeticExpression            # comparison
