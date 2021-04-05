@@ -9,12 +9,13 @@ LCURLY : '{' ;
 RCURLY : '}' ;
 
 // Keywords
-PRINT : 'print' ;
-GOTO  : 'goto' ;
-FOR   : 'for' ;
-WHILE : 'while' ;
-IF    : 'if' ;
-ELSE  : 'else' ;
+PRINT    : 'print' ;
+PRINTSTR : 'printstr' ;
+GOTO     : 'goto' ;
+FOR      : 'for' ;
+WHILE    : 'while' ;
+IF       : 'if' ;
+ELSE     : 'else' ;
 
 // Types
 INTTYPE     : 'int' ;
@@ -37,8 +38,8 @@ NOTEQUAL    : '!=' ;
 GREATEROREQ : '>=' ;
 LESSOREQ    : '<=' ;
 LABEL       : ':' ;
-AND : '&&' ;
-OR : '||' ;
+AND         : '&&' ;
+OR          : '||' ;
 
 // Literals
 INTLIT             : '0'|[1-9][0-9]* ;

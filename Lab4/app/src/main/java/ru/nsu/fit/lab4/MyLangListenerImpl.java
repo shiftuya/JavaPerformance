@@ -1,5 +1,6 @@
 package ru.nsu.fit.lab4;
 
+import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SUPER;
@@ -69,7 +70,9 @@ import ru.nsu.fit.lab4.generated.MyLangParser.ParenExpressionContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.PrintArithmeticContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.PrintLogicalContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.PrintStatementContext;
+import ru.nsu.fit.lab4.generated.MyLangParser.PrintStrStatementContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.PrintStringContext;
+import ru.nsu.fit.lab4.generated.MyLangParser.PrintstrContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringAssignmentContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringConcatContext;
 import ru.nsu.fit.lab4.generated.MyLangParser.StringDeclarationContext;
@@ -265,7 +268,17 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitStringAssignment(StringAssignmentContext ctx) {
-
+    int number;
+    if (localVariableNameMap.containsKey(ctx.getChild(0).getText())) {
+      number = localVariableNameMap.get(ctx.getChild(0).getText());
+    } else {
+      number = localVariableNameMap.keySet().size();
+      localVariableNameMap.put(ctx.getChild(0).getText(), number);
+      localVariableMap.get(codeBlockStack.peek()).add(ctx.getChild(0).getText());
+    }
+    methodVisitor.visitVarInsn(ASTORE, number);
+    stackTypes.pop();
+    varTypes.put(number, "java/lang/String");
   }
 
   @Override
@@ -309,6 +322,22 @@ public class MyLangListenerImpl implements MyLangParserListener {
     methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Z)V", false);
     stackTypes.pop(); // remove arg
     stackTypes.pop(); // remove reference
+
+  }
+
+  @Override
+  public void enterPrintstr(PrintstrContext ctx) {
+    if (!localVariableNameMap.containsKey(ctx.ID().getText())) {
+      throw new IllegalStateException("Unknown variable: " + ctx.ID().getText());
+    }
+    int index = localVariableNameMap.get(ctx.ID().getText());
+    methodVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+    methodVisitor.visitVarInsn(ALOAD, index);
+    methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+  }
+
+  @Override
+  public void exitPrintstr(PrintstrContext ctx) {
 
   }
 
@@ -550,6 +579,16 @@ public class MyLangListenerImpl implements MyLangParserListener {
 
   @Override
   public void exitPrintStatement(PrintStatementContext ctx) {
+
+  }
+
+  @Override
+  public void enterPrintStrStatement(PrintStrStatementContext ctx) {
+
+  }
+
+  @Override
+  public void exitPrintStrStatement(PrintStrStatementContext ctx) {
 
   }
 

@@ -12,27 +12,27 @@ ifclause : IF LPAREN logicalExpression RPAREN codeBlock ;
 labelDeclaration : INTLIT LABEL ;
 
 line : statement (NEWLINE | EOF)              # nonEmptyLine
-| NEWLINE                                     # emptyLine ;
+     | NEWLINE                                # emptyLine ;
 
 varDeclaration : INTTYPE assignment           # intDeclaration
-| STRINGTYPE assignment                       # stringDeclaration ;
+               | STRINGTYPE assignment        # stringDeclaration ;
 
 assignment : ID ASSIGN arithmeticExpression   # intAssignment
-| ID ASSIGN stringExpression                  # stringAssignment ;
+           | ID ASSIGN stringExpression       # stringAssignment ;
 
 print : PRINT stringExpression                # printString
-| PRINT arithmeticExpression                  # printArithmetic
-| PRINT logicalExpression                     # printLogical ;
+      | PRINT arithmeticExpression            # printArithmetic
+      | PRINT logicalExpression               # printLogical ;
+
+printstr : PRINTSTR ID ;
 
 gotoExpression : GOTO INTLIT ;
 
-arithmeticExpression :
-LPAREN arithmeticExpression binaryArithmeticSign arithmeticExpression RPAREN # binaryArithmetic
-| INTLIT                                                                     # intLiteral
-| ID                                                                         # varReference
-| LPAREN arithmeticExpression RPAREN                                         # parenExpression
-| MINUS arithmeticExpression                                                 # minusExpression
-;
+arithmeticExpression : LPAREN arithmeticExpression binaryArithmeticSign arithmeticExpression RPAREN # binaryArithmetic
+                     | INTLIT                                                                       # intLiteral
+                     | ID                                                                           # varReference
+                     | LPAREN arithmeticExpression RPAREN                                           # parenExpression
+                     | MINUS arithmeticExpression                                                   # minusExpression ;
 
 stringExpression :
 STRINGLIT                         # stringLiteral
@@ -41,14 +41,14 @@ STRINGLIT                         # stringLiteral
 ;
 
 
-logicalExpression :
-arithmeticExpression comparisonSign arithmeticExpression            # comparison
-| LPAREN logicalExpression binaryLogicSign logicalExpression RPAREN # binaryLogic
-| NOT LPAREN logicalExpression RPAREN                               # negation ;
+logicalExpression : arithmeticExpression comparisonSign arithmeticExpression            # comparison
+                  | LPAREN logicalExpression binaryLogicSign logicalExpression RPAREN   # binaryLogic
+                  | NOT LPAREN logicalExpression RPAREN                                 # negation ;
 
 statement : assignment      # assignmentStatement
 | varDeclaration            # declarationStatement
 | print                     # printStatement
+| printstr                  # printStrStatement
 | gotoExpression            # gotoStatement
 | ifclause                  # ifStatement
 | labelDeclaration          # labelStatement;
@@ -56,10 +56,10 @@ statement : assignment      # assignmentStatement
 binaryArithmeticSign : PLUS | MINUS | ASTERISK | DIVISION ;
 
 comparisonSign : EQUAL
-| NOTEQUAL
-| GREATER
-| GREATEROREQ
-| LESS
-| LESSOREQ ;
+               | NOTEQUAL
+               | GREATER
+               | GREATEROREQ
+               | LESS
+               | LESSOREQ ;
 
 binaryLogicSign : AND | OR ;
