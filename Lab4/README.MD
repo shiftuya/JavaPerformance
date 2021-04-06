@@ -2,4 +2,4 @@
 
 Compile: `gradle jar`
 
-Usage: `myLang.jar [source]`
+Usage: `java -jar myLang.jar [source]`
