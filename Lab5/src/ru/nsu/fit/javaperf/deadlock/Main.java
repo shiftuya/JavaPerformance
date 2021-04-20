@@ -37,7 +37,7 @@ public class Main {
       this.count = count;
     }
 
-    public synchronized void await() throws InterruptedException {
+    public void await() throws InterruptedException {
       synchronized (this) {
         if (count > 0) {
           this.wait();
