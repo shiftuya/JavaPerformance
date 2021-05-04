@@ -1,0 +1,43 @@
+plugins {
+    id 'application'
+}
+
+apply plugin: 'antlr'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.guava:guava:29.0-jre'
+
+    antlr "org.antlr:antlr4:4.9.1"
+    compile "org.antlr:antlr4-runtime:4.9.1"
+
+    testCompile 'junit:junit:4.13'
+    implementation group: 'org.ow2.asm', name: 'asm', version: '9.1'
+
+    implementation group: 'commons-io', name: 'commons-io', version: '2.6'
+}
+
+application {
+    mainClass = 'ru.nsu.fit.lab4.App'
+}
+
+generateGrammarSource {
+    maxHeapSize = "64m"
+    arguments += ['-package', 'ru.nsu.fit.lab4.generated']
+    outputDirectory = new File("src/main/java/ru/nsu/fit/lab4/generated".toString())
+}
+
+jar {
+    archivesBaseName = 'myLang'
+
+    manifest {
+        attributes 'Main-Class': application.mainClass
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
