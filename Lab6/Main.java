@@ -9,7 +9,7 @@ public class Main {
 
   public static void main(String[] args) {
     Map<String, String> cpuInfo = getCpuInfo();
-    //System.out.println(cpuInfo);
+    
     System.out.println("Model name: " + cpuInfo.get("model name"));
     System.out.println("CPU cores: " + cpuInfo.get("cpu cores"));
     System.out.println("CPU MHz: " + cpuInfo.get("cpu MHz"));
