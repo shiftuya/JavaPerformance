@@ -23,3 +23,7 @@ several extra operations such as check for max and min integer values.
 
 The regex method is slower than `Characted.isDigit` because the `Matcher.match` method
 includes significantly more operations than the `Character.isDigit` method.
+
+`isDigit` and Regex work faster in case of the third test because it is clear already 
+at the first character that the string is not correct, so they do not have to check
+subsequent chars.
