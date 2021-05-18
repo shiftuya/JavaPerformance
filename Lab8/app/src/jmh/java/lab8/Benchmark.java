@@ -31,4 +31,9 @@ public class Benchmark {
   public void benchmarkRegex(Blackhole blackhole){
     blackhole.consume(Parsers.parseRegex(string));
   }
+
+  @org.openjdk.jmh.annotations.Benchmark
+  public void benchmarkAnotherRegex(Blackhole blackhole){
+    blackhole.consume(Parsers.parseAnotherRegex(string));
+  }
 }

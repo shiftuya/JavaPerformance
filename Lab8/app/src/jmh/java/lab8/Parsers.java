@@ -30,4 +30,8 @@ public class Parsers {
   public static boolean parseRegex(String str){
     return PATTERN.matcher(str).matches();
   }
+
+  public static boolean parseAnotherRegex(String str) {
+    return str.matches("^\\d+$");
+  }
 }
