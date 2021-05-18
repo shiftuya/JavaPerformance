@@ -14,6 +14,9 @@ public class Parsers {
   }
 
   public static boolean parseIsDigit(String str) {
+    if (str.length() == 0) {
+      return false;
+    }
     for (char ch : str.toCharArray()) {
       if (!Character.isDigit(ch)) {
         return false;
